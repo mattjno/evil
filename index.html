@@ -1,1 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCPI — Simulateur de rentabilité du lancement (SDG)</title>
+<style>
+  :root{
+    --ink:#152238;
+    --ink-soft:#3a4861;
+    --paper:#f6f7f9;
+    --card:#ffffff;
+    --line:#e3e7ee;
+    --line-strong:#c7cedb;
+    --edit:#1d4ed8;
+    --edit-bg:#eef3ff;
+    --edit-bd:#b9ccfb;
+    --sdg:#0c6b62;
+    --sdg-bg:#e6f3f1;
+    --distrib:#b07414;
+    --distrib-bg:#f8efde;
+    --muted:#6b7585;
+    --shadow:0 1px 2px rgba(21,34,56,.06),0 4px 16px rgba(21,34,56,.05);
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+        font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
 
+  /* Header */
+  header{background:var(--ink);color:#fff;margin:0 -9999px 28px;padding:34px 9999px 30px}
+  .head-in{max-width:1180px;margin:0 auto;padding:0 20px}
+  header h1{margin:0;font-size:25px;font-weight:600;letter-spacing:-.01em}
+  header .sub{margin:8px 0 0;color:#aeb9cd;font-size:14px;max-width:760px}
+  .badge-edit{display:inline-block;width:11px;height:11px;border-radius:2px;
+        background:var(--edit-bg);border:1.5px solid var(--edit);vertical-align:-1px;margin:0 2px}
+  .toolbar{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:13px;font-weight:500;border-radius:8px;
+        padding:8px 14px;cursor:pointer;border:1px solid transparent;transition:.15s}
+  .btn-ghost{background:transparent;color:#cdd6e5;border-color:#3a4861}
+  .btn-ghost:hover{color:#fff;border-color:#5a6a85}
+  .btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+  /* Sections */
+  section{margin:0 0 26px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin:0 0 12px}
+  .sec-num{font-family:var(--mono);font-size:12px;color:var(--muted);
+        border:1px solid var(--line-strong);border-radius:5px;padding:2px 7px;flex:none}
+  .sec-head h2{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .sec-head .unit{margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        box-shadow:var(--shadow);padding:16px 18px}
+  .card h3{margin:0 0 12px;font-size:13px;font-weight:600;text-transform:uppercase;
+        letter-spacing:.06em;color:var(--ink-soft)}
+
+  /* Input rows */
+  .irow{display:flex;align-items:center;justify-content:space-between;gap:10px;
+        padding:7px 0;border-bottom:1px dashed var(--line)}
+  .irow:last-child{border-bottom:0}
+  .irow label{font-size:14px;color:var(--ink)}
+  .ifield{display:flex;align-items:center;gap:4px;flex:none}
+  input.cell{font-family:var(--mono);font-size:14px;text-align:right;width:88px;
+        color:var(--edit);background:var(--edit-bg);border:1px solid var(--edit-bd);
+        border-radius:6px;padding:5px 8px}
+  input.cell:focus{outline:none;border-color:var(--edit);box-shadow:0 0 0 3px rgba(29,78,216,.15)}
+  input.cell.narrow{width:64px}
+  .suffix{font-family:var(--mono);font-size:13px;color:var(--muted);width:18px;text-align:left}
+
+  /* Derived list */
+  .drow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;
+        border-bottom:1px dashed var(--line);font-size:14px}
+  .drow:last-child{border-bottom:0}
+  .drow .v{font-family:var(--mono);color:var(--ink)}
+  .drow.key{font-weight:600}
+  .drow.key .v{color:var(--sdg)}
+
+  /* Tables */
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:8px 11px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card);z-index:1}
+  thead th{background:#f0f2f6;font-weight:600;color:var(--ink-soft);font-size:12px;
+        text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--line-strong)}
+  thead th:first-child{background:#f0f2f6}
+  tbody td{font-family:var(--mono)}
+  tbody td:first-child{font-family:var(--sans);color:var(--ink)}
+  tr.sub td:first-child{padding-left:22px;color:var(--ink-soft)}
+  tr.tot td{font-weight:600;border-top:1.5px solid var(--line-strong);background:#fafbfc}
+  tr.tot td:first-child{background:#fafbfc}
+  tr.grand td{font-weight:700;background:#eef1f6}
+  tr.grand td:first-child{background:#eef1f6}
+  .col-cum{background:#fbfaf5}
+  th.col-cum{background:#f3efe2}
+  td .editbox{font-family:var(--mono);text-align:right;width:62px;color:var(--edit);
+        background:var(--edit-bg);border:1px solid var(--edit-bd);border-radius:5px;padding:3px 5px;font-size:13px}
+  td .editbox:focus{outline:none;box-shadow:0 0 0 3px rgba(29,78,216,.15)}
+  .pos{color:var(--sdg)} .neg{color:var(--distrib)}
+
+  /* Synthesis cards */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:820px){.kpis{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:15px 16px;box-shadow:var(--shadow)}
+  .kpi .lab{font-size:12px;color:var(--muted);font-weight:500}
+  .kpi .big{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:6px;letter-spacing:-.02em}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+  .kpi.sdg .big{color:var(--sdg)}
+  .kpi.distrib .big{color:var(--distrib)}
+
+  /* Disclosure */
+  details{margin:0 0 14px}
+  details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;
+        font-size:14px;font-weight:600;color:var(--ink-soft);padding:11px 14px;
+        background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+  details>summary::-webkit-details-marker{display:none}
+  details[open]>summary{border-radius:10px 10px 0 0;border-bottom:0}
+  .chev{transition:.2s}
+  details[open] .chev{transform:rotate(90deg)}
+  details .scroll{border-radius:0 0 10px 10px;border-top:0}
+
+  /* Charts */
+  .charts{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+  @media(max-width:820px){.charts{grid-template-columns:1fr}}
+  .chart-card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:16px 18px 10px;box-shadow:var(--shadow)}
+  .chart-card h3{margin:0 0 4px;font-size:13px;font-weight:600;text-transform:uppercase;
+        letter-spacing:.06em;color:var(--ink-soft)}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--ink-soft);margin:6px 0 4px;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:2px;display:inline-block}
+  svg{width:100%;height:auto;display:block}
+  .ax{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+  .gl{stroke:var(--line);stroke-width:1}
+
+  .warn{display:none;background:#fdf0ee;border:1px solid #f3c9c1;color:#9a3b29;
+        border-radius:9px;padding:9px 13px;font-size:13px;margin:0 0 14px}
+  .warn.show{display:block}
+  .note{font-size:12.5px;color:var(--muted);margin:18px 0 0;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <h1>SCPI — Simulation de rentabilité du lancement</h1>
+    <p class="sub">Modèle de partage des commissions par canal de distribution sur 10 ans, du point de vue de la Société de Gestion. Les champs <span class="badge-edit"></span> sont modifiables : toute saisie recalcule l'ensemble du modèle. Montants en M€ sauf indication.</p>
+    <div class="toolbar">
+      <button class="btn btn-ghost" id="reset">Réinitialiser les hypothèses</button>
+      <button class="btn btn-ghost" id="print">Imprimer / Exporter en PDF</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="warn" id="warn"></div>
+
+  <!-- 1. Hypothèses -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Hypothèses</h2></div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Acquisition &amp; levier</h3>
+        <div class="irow"><label>Prix de souscription (€/part)</label>
+          <span class="ifield"><input class="cell" id="prixSousc"><span class="suffix">€</span></span></div>
+        <div class="irow"><label>Commission de souscription (% HT)</label>
+          <span class="ifield"><input class="cell narrow" id="commSousc"><span class="suffix">%</span></span></div>
+        <div class="irow"><label>Commission de gestion (% HT loyers)</label>
+          <span class="ifield"><input class="cell narrow" id="commGestion"><span class="suffix">%</span></span></div>
+        <div class="irow"><label>Rendement locatif brut (% / Prix AEM)</label>
+          <span class="ifield"><input class="cell narrow" id="rendement"><span class="suffix">%</span></span></div>
+        <div class="irow"><label>Droits d'acquisition (% / Prix HD)</label>
+          <span class="ifield"><input class="cell narrow" id="droits"><span class="suffix">%</span></span></div>
+        <div class="irow"><label>LTV (Dette / Prix HD)</label>
+          <span class="ifield"><input class="cell narrow" id="ltv"><span class="suffix">%</span></span></div>
+        <div class="irow"><label>Quote-part collecte investie l'année N</label>
+          <span class="ifield"><input class="cell narrow" id="quotePart"><span class="suffix">%</span></span></div>
+      </div>
+      <div class="card">
+        <h3>Valeurs dérivées (par part de 100 €)</h3>
+        <div class="drow"><span>Equity investissable</span><span class="v" id="d_equity"></span></div>
+        <div class="drow"><span>Prix HD</span><span class="v" id="d_prixHD"></span></div>
+        <div class="drow"><span>Droits</span><span class="v" id="d_droits"></span></div>
+        <div class="drow"><span>Prix AEM = cash out</span><span class="v" id="d_prixAEM"></span></div>
+        <div class="drow"><span>Dette</span><span class="v" id="d_dette"></span></div>
+        <div class="drow"><span>Vérif : Equity + Dette − AEM (≈ 0)</span><span class="v" id="d_verif"></span></div>
+        <div class="drow"><span>Patrimoine HD par € collecté</span><span class="v" id="d_patHD"></span></div>
+        <div class="drow"><span>Patrimoine AEM par € collecté</span><span class="v" id="d_patAEM"></span></div>
+        <div class="drow key"><span>Commission de gestion / an (% de la collecte)</span><span class="v" id="d_cgan"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Canaux -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Canaux de collecte &amp; rétrocommissions</h2>
+      <span class="unit">gains 10 ans en % de la collecte</span></div>
+    <div class="scroll">
+      <table id="canaux">
+        <thead><tr>
+          <th>Canal</th><th>% collecte</th><th>Rétro souscr.</th><th>Rétro gestion<br>(% encours/an)</th>
+          <th>CGP — gain 10 ans</th><th>SDG — gain 10 ans</th><th>Total brut (contrôle)</th>
+        </tr></thead>
+        <tbody id="canauxBody"></tbody>
+        <tfoot><tr class="tot" id="canauxTot"></tr></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. Collecte annuelle -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Collecte annuelle</h2><span class="unit">M€ par an</span></div>
+    <div class="scroll">
+      <table id="collecte">
+        <thead><tr id="collHead"></tr></thead>
+        <tbody><tr id="collRow"></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. Encours -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Évolution des encours</h2><span class="unit">M€</span></div>
+    <div class="scroll"><table id="encours"></table></div>
+  </section>
+
+  <!-- 5. Synthèse -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Synthèse &amp; comparaison par canal</h2><span class="unit">cumul 10 ans</span></div>
+    <div class="kpis" id="kpis" style="margin-bottom:18px"></div>
+    <div class="scroll">
+      <table id="synth">
+        <thead><tr><th>Indicateur</th><th>B2C</th><th>Mandataires</th><th>CGPI</th><th>Total</th></tr></thead>
+        <tbody id="synthBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6. Graphiques -->
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>Lecture graphique</h2></div>
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Commissions nettes SDG par an</h3>
+        <div class="legend">
+          <span><i class="sw" style="background:#2f5fb0"></i>Souscription nette</span>
+          <span><i class="sw" style="background:#0c6b62"></i>Gestion nette</span>
+        </div>
+        <div id="chartYears"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Rentabilité par canal (% collecte)</h3>
+        <div class="legend">
+          <span><i class="sw" style="background:#0c6b62"></i>Rentabilité SDG</span>
+          <span><i class="sw" style="background:#b07414"></i>Part distributeur</span>
+        </div>
+        <div id="chartChannels"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Détail par canal -->
+  <section>
+    <div class="sec-head"><span class="sec-num">07</span><h2>Détail des commissions</h2></div>
+    <div id="detailWrap"></div>
+  </section>
+
+  <p class="note">Modèle reconstruit à l'identique depuis le fichier source <code>Retro_EVIL.xlsx</code> (feuille unique). Convention conservée : champs bleus = hypothèses modifiables. Les loyers par canal intègrent le déploiement progressif via la quote-part investie l'année N. Aucun chiffre n'est figé : tout dépend des hypothèses saisies ci-dessus.</p>
+</div>
+
+<script>
+"use strict";
+
+const DEFAULTS = {
+  prixSousc:100, commSousc:0.10, commGestion:0.12, rendement:0.075,
+  droits:0.06, ltv:0.25, quotePart:0.25,
+  channels:[
+    {name:"B2C",         pct:0.10, rs:0,     rg:0},
+    {name:"Mandataires", pct:0.50, rs:0.08,  rg:0.001},
+    {name:"CGPI",        pct:0.40, rs:0.065, rg:0}
+  ],
+  collecte:[50,100,175,250,300,300,300,300,300,300]
+};
+const YEARS = 10;
+let S = structuredClone(DEFAULTS);
+
+/* ---------- formatting (FR) ---------- */
+const nf = (v,d=1)=> (isFinite(v)?v:0).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fM  = (v,d=1)=> nf(v,d);
+const fE  = (v,d=2)=> nf(v,d)+" €";
+const fP  = (v,d=1)=> nf(v*100,d)+" %";
+
+/* ---------- compute engine (mirrors the workbook) ---------- */
+function compute(){
+  const o={};
+  // derived per part
+  o.equity   = S.prixSousc*(1-S.commSousc);
+  o.prixHD   = o.equity/(1+S.droits-S.ltv);
+  o.droitsE  = S.droits*o.prixHD;
+  o.prixAEM  = o.prixHD+o.droitsE;
+  o.dette    = S.ltv*o.prixHD;
+  o.verif    = o.equity+o.dette-o.prixAEM;
+  o.patHD    = o.prixHD/S.prixSousc;
+  o.detteR   = o.dette/S.prixSousc;
+  o.patAEM   = o.prixAEM/S.prixSousc;
+  o.cgan     = S.commGestion*S.rendement*o.patAEM;      // gestion/an en % collecte
+
+  // channel control columns (10y, % collecte)
+  o.chCtrl = S.channels.map(c=>{
+    const cgp = c.rs + YEARS*c.rg;
+    const sdg = (S.commSousc - c.rs) + YEARS*(o.cgan - c.rg);
+    return {cgp, sdg, tot:cgp+sdg};
+  });
+  o.wAvg = {pct:0, rs:0, rg:0, cgp:0, sdg:0, tot:0};
+  S.channels.forEach((c,i)=>{
+    o.wAvg.pct+=c.pct; o.wAvg.rs+=c.pct*c.rs; o.wAvg.rg+=c.pct*c.rg;
+    o.wAvg.cgp+=c.pct*o.chCtrl[i].cgp; o.wAvg.sdg+=c.pct*o.chCtrl[i].sdg; o.wAvg.tot+=c.pct*o.chCtrl[i].tot;
+  });
+
+  // encours arrays
+  const col=S.collecte, cum=[], patHD=[], dette=[], aem=[], aemMoy=[], loy=[];
+  for(let i=0;i<YEARS;i++){
+    cum[i]=(i?cum[i-1]:0)+col[i];
+    patHD[i]=cum[i]*o.patHD;
+    dette[i]=cum[i]*o.detteR;
+    aem[i]=cum[i]*o.patAEM;
+    aemMoy[i]= i? (aem[i-1]+aem[i])/2 : aem[i]/2;
+    loy[i]=S.rendement*aemMoy[i];
+  }
+  o.enc={col,cum,patHD,dette,aem,aemMoy,loy};
+
+  // per-channel blocks
+  o.blocks = S.channels.map((c)=>{
+    const cc=[], ec=[], sb=[], rs=[], sn=[], lo=[], gb=[], rg=[], gn=[], tn=[];
+    for(let i=0;i<YEARS;i++){
+      cc[i]=col[i]*c.pct;
+      ec[i]=(i?ec[i-1]:0)+cc[i];
+      sb[i]=cc[i]*S.commSousc;
+      rs[i]=cc[i]*c.rs;
+      sn[i]=sb[i]-rs[i];
+      const arg = i? (ec[i-1]+S.quotePart*(ec[i]-ec[i-1])) : (S.quotePart*ec[i]);
+      lo[i]=S.rendement*o.patAEM*arg;
+      gb[i]=lo[i]*S.commGestion;
+      const encMoy = i? (ec[i-1]+ec[i])/2 : ec[i]/2;
+      rg[i]=encMoy*c.rg;
+      gn[i]=gb[i]-rg[i];
+      tn[i]=sn[i]+gn[i];
+    }
+    const sum=a=>a.reduce((x,y)=>x+y,0);
+    return {name:c.name,cc,ec,sb,rs,sn,lo,gb,rg,gn,tn,
+      L:{cc:sum(cc),sb:sum(sb),rs:sum(rs),sn:sum(sn),gb:sum(gb),rg:sum(rg),gn:sum(gn),tn:sum(tn)}};
+  });
+
+  // totals all channels
+  const Z=()=>new Array(YEARS).fill(0);
+  const T={sb:Z(),rs:Z(),sn:Z(),gb:Z(),rg:Z(),gn:Z(),brut:Z(),net:Z(),cumNet:Z()};
+  for(let i=0;i<YEARS;i++){
+    o.blocks.forEach(b=>{T.sb[i]+=b.sb[i];T.rs[i]+=b.rs[i];T.sn[i]+=b.sn[i];
+                         T.gb[i]+=b.gb[i];T.rg[i]+=b.rg[i];T.gn[i]+=b.gn[i];});
+    T.brut[i]=T.sb[i]+T.gb[i];
+    T.net[i]=T.sn[i]+T.gn[i];
+    T.cumNet[i]=(i?T.cumNet[i-1]:0)+T.net[i];
+  }
+  o.tot=T;
+
+  // synthesis per channel
+  o.synth = o.blocks.map(b=>{
+    const collecte=b.L.cc, brut=b.L.sb+b.L.gb, net=b.L.tn, retro=b.L.rs+b.L.rg;
+    return {name:b.name, collecte, brut, net, retro,
+      rentSDG:collecte?net/collecte:0, partD:collecte?retro/collecte:0};
+  });
+  const sum=k=>o.synth.reduce((x,s)=>x+s[k],0);
+  o.synthTot={collecte:sum('collecte'),brut:sum('brut'),net:sum('net'),retro:sum('retro')};
+  o.synthTot.rentSDG=o.synthTot.collecte?o.synthTot.net/o.synthTot.collecte:0;
+  o.synthTot.partD=o.synthTot.collecte?o.synthTot.retro/o.synthTot.collecte:0;
+  return o;
+}
+
+/* ---------- render ---------- */
+function yrCols(){let s='';for(let i=1;i<=YEARS;i++)s+=`<th>An ${i}</th>`;return s;}
+function rowCells(arr,d=2,cls=''){return arr.map(v=>`<td class="${cls}">${fM(v,d)}</td>`).join('');}
+
+function render(){
+  // validation
+  const sumPct = S.channels.reduce((a,c)=>a+c.pct,0);
+  const warn=document.getElementById('warn');
+  if(Math.abs(sumPct-1)>1e-9){
+    warn.textContent=`La somme des « % collecte » par canal vaut ${fP(sumPct)} au lieu de 100 %. Le modèle calcule quand même, mais la répartition n'est pas bouclée.`;
+    warn.classList.add('show');
+  } else warn.classList.remove('show');
+
+  const o=compute();
+
+  // derived
+  const set=(id,v)=>document.getElementById(id).textContent=v;
+  set('d_equity',fE(o.equity)); set('d_prixHD',fE(o.prixHD)); set('d_droits',fE(o.droitsE));
+  set('d_prixAEM',fE(o.prixAEM)); set('d_dette',fE(o.dette)); set('d_verif',fE(o.verif));
+  set('d_patHD',nf(o.patHD,3)); set('d_patAEM',nf(o.patAEM,3)); set('d_cgan',fP(o.cgan,2));
+
+  // canaux table
+  const cb=document.getElementById('canauxBody');
+  cb.innerHTML=S.channels.map((c,i)=>`
+    <tr>
+      <td>${c.name}</td>
+      <td><input class="editbox" data-k="pct" data-i="${i}" value="${nf(c.pct*100,1)}">%</td>
+      <td><input class="editbox" data-k="rs"  data-i="${i}" value="${nf(c.rs*100,2)}">%</td>
+      <td><input class="editbox" data-k="rg"  data-i="${i}" value="${nf(c.rg*100,3)}">%</td>
+      <td class="neg">${fP(o.chCtrl[i].cgp)}</td>
+      <td class="pos">${fP(o.chCtrl[i].sdg)}</td>
+      <td>${fP(o.chCtrl[i].tot)}</td>
+    </tr>`).join('');
+  document.getElementById('canauxTot').innerHTML=
+    `<td>Total / moy. pond.</td><td>${fP(o.wAvg.pct)}</td><td>${fP(o.wAvg.rs)}</td>
+     <td>${fP(o.wAvg.rg,3)}</td><td class="neg">${fP(o.wAvg.cgp)}</td>
+     <td class="pos">${fP(o.wAvg.sdg)}</td><td>${fP(o.wAvg.tot)}</td>`;
+
+  // collecte
+  document.getElementById('collHead').innerHTML=`<th>Année</th>${yrCols()}<th class="col-cum">Cumul</th>`;
+  const collRow=document.getElementById('collRow');
+  let cells=`<td>Collecte annuelle</td>`;
+  S.collecte.forEach((v,i)=>{cells+=`<td><input class="editbox" data-coll="${i}" value="${nf(v,0)}"></td>`;});
+  cells+=`<td class="col-cum">${fM(o.enc.cum[YEARS-1],0)}</td>`;
+  collRow.innerHTML=cells;
+
+  // encours
+  const enc=o.enc;
+  const encRows=[
+    ['Collecte annuelle',enc.col,0],
+    ['Collecte cumulée (encours souscrit)',enc.cum,0],
+    ['Patrimoine immobilier HD cumulé',enc.patHD,1],
+    ['Dette cumulée',enc.dette,1],
+    ['Patrimoine AEM cumulé (assiette loyers)',enc.aem,1],
+    ['Patrimoine AEM moyen (déploiement)',enc.aemMoy,1],
+    ['Loyers encaissés',enc.loy,1]
+  ];
+  let etbl=`<thead><tr><th>Poste</th>${yrCols()}<th class="col-cum">Cumul</th></tr></thead><tbody>`;
+  encRows.forEach(([lab,arr,d])=>{
+    const cum = (lab==='Loyers encaissés')? arr.reduce((a,b)=>a+b,0) : enc.cum[YEARS-1]*0+arr[YEARS-1];
+    const showCum = (lab==='Loyers encaissés')? fM(arr.reduce((a,b)=>a+b,0),1) : (lab==='Collecte annuelle'? fM(enc.cum[YEARS-1],0):'');
+    etbl+=`<tr><td>${lab}</td>${rowCells(arr,d)}<td class="col-cum">${showCum}</td></tr>`;
+  });
+  etbl+=`</tbody>`;
+  document.getElementById('encours').innerHTML=etbl;
+
+  // synthesis
+  const sy=o.synth, st=o.synthTot;
+  const r=(lab,fn,cls='')=>`<tr class="${cls}"><td>${lab}</td>${sy.map(s=>`<td>${fn(s)}</td>`).join('')}<td>${fn(st)}</td></tr>`;
+  document.getElementById('synthBody').innerHTML=
+    r('Collecte',s=>fM(s.collecte,1))+
+    r('Commissions brutes',s=>fM(s.brut,2))+
+    r('Commissions nettes SDG',s=>fM(s.net,2),'tot')+
+    r('Rétro versée au distributeur',s=>fM(s.retro,2))+
+    r('Rentabilité SDG (% collecte)',s=>fP(s.rentSDG),'')+
+    r('Part distributeur (% collecte)',s=>fP(s.partD),'');
+
+  // KPIs
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="lab">Collecte cumulée 10 ans</div>
+      <div class="big">${fM(st.collecte,0)}</div><div class="sub">M€</div></div>
+    <div class="kpi sdg"><div class="lab">Commissions nettes SDG</div>
+      <div class="big">${fM(st.net,1)}</div><div class="sub">M€ · ${fP(st.rentSDG)} de la collecte</div></div>
+    <div class="kpi distrib"><div class="lab">Rétro versée aux distributeurs</div>
+      <div class="big">${fM(st.retro,1)}</div><div class="sub">M€ · ${fP(st.partD)} de la collecte</div></div>
+    <div class="kpi"><div class="lab">Commissions brutes SDG</div>
+      <div class="big">${fM(st.brut,1)}</div><div class="sub">M€ avant rétro</div></div>`;
+
+  // detail blocks
+  const dw=document.getElementById('detailWrap');
+  const blockTable=(b,withRetroSousc,withRetroGest)=>{
+    const rows=[
+      ['Collecte annuelle',b.cc,2,'sub',b.L.cc],
+      ["Encours cumulé (fin d'année)",b.ec,2,'sub',b.ec[YEARS-1]],
+      ['Commission souscription — brute',b.sb,3,'sub',b.L.sb],
+      ['− Rétro souscription',b.rs,3,'sub',b.L.rs],
+      ['Commission souscription — nette',b.sn,3,'sub',b.L.sn],
+      ['Loyers encaissés',b.lo,3,'sub',b.lo.reduce((a,c)=>a+c,0)],
+      ['Commission gestion — brute',b.gb,3,'sub',b.L.gb],
+      ['− Rétro gestion (encours moyen)',b.rg,3,'sub',b.L.rg],
+      ['Commission gestion — nette',b.gn,3,'sub',b.L.gn],
+      ['TOTAL commissions nettes',b.tn,3,'tot',b.L.tn]
+    ];
+    let t=`<table><thead><tr><th>${b.name}</th>${yrCols()}<th class="col-cum">Cumul</th></tr></thead><tbody>`;
+    rows.forEach(([lab,arr,d,cls,cum])=>{
+      t+=`<tr class="${cls==='tot'?'tot':'sub'}"><td>${lab}</td>${rowCells(arr,d)}<td class="col-cum">${fM(cum,d)}</td></tr>`;
+    });
+    return t+`</tbody></table>`;
+  };
+  const T=o.tot;
+  const totRows=[
+    ['Commission souscription — brute',T.sb,2,''],
+    ['− Rétro souscription',T.rs,2,''],
+    ['Commission souscription — nette',T.sn,2,'tot'],
+    ['Commission gestion — brute',T.gb,2,''],
+    ['− Rétro gestion',T.rg,2,''],
+    ['Commission gestion — nette',T.gn,2,'tot'],
+    ['TOTAL commissions BRUTES',T.brut,2,'tot'],
+    ['TOTAL commissions NETTES',T.net,2,'grand'],
+    ['Commissions nettes cumulées',T.cumNet,2,'']
+  ];
+  let totTbl=`<table><thead><tr><th>Tous canaux</th>${yrCols()}<th class="col-cum">Cumul</th></tr></thead><tbody>`;
+  totRows.forEach(([lab,arr,d,cls])=>{
+    const cum = lab==='Commissions nettes cumulées' ? '' : fM(arr.reduce((a,c)=>a+c,0),d);
+    totTbl+=`<tr class="${cls}"><td>${lab}</td>${rowCells(arr,d)}<td class="col-cum">${cum}</td></tr>`;
+  });
+  totTbl+=`</tbody></table>`;
+
+  dw.innerHTML=
+    `<details open><summary><span class="chev">▸</span>Total SGP — tous canaux</summary><div class="scroll">${totTbl}</div></details>`+
+    o.blocks.map(b=>`<details><summary><span class="chev">▸</span>Détail canal — ${b.name}</summary><div class="scroll">${blockTable(b)}</div></details>`).join('');
+
+  drawYears(o.tot);
+  drawChannels(o.synth);
+  bindCellInputs();
+}
+
+/* ---------- charts (inline SVG, no deps) ---------- */
+function drawYears(T){
+  const W=560,H=300,m={t:14,r:12,b:34,l:42};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const totals=T.net, max=Math.max(...totals)*1.12||1;
+  const bw=iw/YEARS*0.62, gap=iw/YEARS;
+  const y=v=>m.t+ih-(v/max)*ih;
+  let g='';
+  for(let k=0;k<=4;k++){const v=max*k/4, yy=y(v);
+    g+=`<line class="gl" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/>`+
+       `<text class="ax" x="${m.l-6}" y="${yy+3}" text-anchor="end">${fM(v,0)}</text>`;}
+  let bars='';
+  for(let i=0;i<YEARS;i++){
+    const cx=m.l+gap*i+(gap-bw)/2;
+    const hS=(T.sn[i]/max)*ih, hG=(T.gn[i]/max)*ih;
+    const yS=m.t+ih-hS, yG=yS-hG;
+    bars+=`<rect x="${cx}" y="${yS}" width="${bw}" height="${Math.max(0,hS)}" fill="#2f5fb0"/>`+
+          `<rect x="${cx}" y="${yG}" width="${bw}" height="${Math.max(0,hG)}" fill="#0c6b62"/>`+
+          `<text class="ax" x="${cx+bw/2}" y="${H-m.b+15}" text-anchor="middle">${i+1}</text>`;
+  }
+  document.getElementById('chartYears').innerHTML=
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Commissions nettes par an">${g}${bars}</svg>`;
+}
+function drawChannels(sy){
+  const W=420,H=300,m={t:14,r:12,b:34,l:42};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const max=Math.max(...sy.flatMap(s=>[s.rentSDG,s.partD]))*1.18||0.01;
+  const grp=iw/sy.length, bw=grp*0.30;
+  const y=v=>m.t+ih-(v/max)*ih;
+  let g='';
+  for(let k=0;k<=4;k++){const v=max*k/4, yy=y(v);
+    g+=`<line class="gl" x1="${m.l}" y1="${yy}" x2="${W-m.r}" y2="${yy}"/>`+
+       `<text class="ax" x="${m.l-6}" y="${yy+3}" text-anchor="end">${nf(v*100,0)}%</text>`;}
+  let bars='';
+  sy.forEach((s,i)=>{
+    const c0=m.l+grp*i+grp/2;
+    const x1=c0-bw-2, x2=c0+2;
+    bars+=`<rect x="${x1}" y="${y(s.rentSDG)}" width="${bw}" height="${ih-(y(s.rentSDG)-m.t)}" fill="#0c6b62"/>`+
+          `<rect x="${x2}" y="${y(s.partD)}" width="${bw}" height="${ih-(y(s.partD)-m.t)}" fill="#b07414"/>`+
+          `<text class="ax" x="${c0}" y="${H-m.b+15}" text-anchor="middle">${s.name}</text>`;
+  });
+  document.getElementById('chartChannels').innerHTML=
+    `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rentabilité par canal">${g}${bars}</svg>`;
+}
+
+/* ---------- inputs binding ---------- */
+function num(v){const n=parseFloat(String(v).replace(',','.').replace(/\s/g,''));return isFinite(n)?n:0;}
+function bindTop(){
+  const map={prixSousc:1,commSousc:100,commGestion:100,rendement:100,droits:100,ltv:100,quotePart:100};
+  Object.keys(map).forEach(id=>{
+    const el=document.getElementById(id);
+    el.value = map[id]===1 ? nf(S[id],0) : nf(S[id]*100, id==='commGestion'||id==='rendement'?1:1);
+    el.addEventListener('change',()=>{ S[id]=num(el.value)/map[id]; render(); });
+  });
+}
+function bindCellInputs(){
+  document.querySelectorAll('input.editbox[data-k]').forEach(el=>{
+    el.addEventListener('change',()=>{
+      const i=+el.dataset.i, k=el.dataset.k;
+      S.channels[i][k]=num(el.value)/100; render();
+    });
+  });
+  document.querySelectorAll('input.editbox[data-coll]').forEach(el=>{
+    el.addEventListener('change',()=>{ S.collecte[+el.dataset.coll]=num(el.value); render(); });
+  });
+}
+
+document.getElementById('reset').addEventListener('click',()=>{S=structuredClone(DEFAULTS);bindTop();render();});
+document.getElementById('print').addEventListener('click',()=>window.print());
+
+bindTop();
+render();
+</script>
+</body>
+</html>
